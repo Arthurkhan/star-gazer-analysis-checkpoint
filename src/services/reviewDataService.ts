@@ -12,14 +12,22 @@ export class ReviewDataService {
    */
   async fetchReviews(businessName: BusinessName): Promise<Review[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from(businessName)
-        .select('*')
-        .order('publishedAtDate', { ascending: false });
+        .select('*');
+      
+      // No date filtering - ensure we get all reviews regardless of business
+      // Sort by date descending to get newest first
+      query = query.order('publishedAtDate', { ascending: false });
+      
+      const { data, error } = await query;
       
       if (error) {
         throw error;
       }
+      
+      // Log the number of reviews fetched for debugging
+      console.log(`Fetched ${data?.length || 0} reviews for ${businessName}`);
       
       return data || [];
     } catch (error) {
@@ -32,6 +40,19 @@ export class ReviewDataService {
    * Process reviews into analysis data
    */
   processReviews(reviews: Review[]): AnalysisData {
+    // Log the date range of reviews for debugging
+    if (reviews.length > 0) {
+      const dates = reviews
+        .filter(r => r.publishedAtDate)
+        .map(r => new Date(r.publishedAtDate).getTime());
+      
+      if (dates.length > 0) {
+        const oldestDate = new Date(Math.min(...dates));
+        const newestDate = new Date(Math.max(...dates));
+        console.log(`Reviews date range: ${oldestDate.toISOString()} to ${newestDate.toISOString()}`);
+      }
+    }
+    
     return {
       reviews,
       metrics: this.calculateMetrics(reviews),
