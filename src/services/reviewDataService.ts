@@ -8,28 +8,54 @@ import { BusinessName } from '../types/businessTypes';
  */
 export class ReviewDataService {
   /**
-   * Fetch reviews for a specific business
+   * Fetch all reviews for a specific business, handling pagination
    */
   async fetchReviews(businessName: BusinessName): Promise<Review[]> {
     try {
-      let query = supabase
+      // First, get the total count of reviews
+      const { count, error: countError } = await supabase
         .from(businessName)
-        .select('*');
+        .select('*', { count: 'exact', head: true });
       
-      // No date filtering - ensure we get all reviews regardless of business
-      // Sort by date descending to get newest first
-      query = query.order('publishedAtDate', { ascending: false });
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        throw error;
+      if (countError) {
+        throw countError;
       }
       
-      // Log the number of reviews fetched for debugging
-      console.log(`Fetched ${data?.length || 0} reviews for ${businessName}`);
+      const totalReviews = count || 0;
+      console.log(`Total reviews available for ${businessName}: ${totalReviews}`);
       
-      return data || [];
+      // Fetch all reviews in batches if needed
+      let allReviews: Review[] = [];
+      const batchSize = 1000; // Supabase has a limit of 1000 records per request
+      
+      // Calculate how many batches we need
+      const batchCount = Math.ceil(totalReviews / batchSize);
+      console.log(`Fetching ${batchCount} batches of up to ${batchSize} reviews`);
+      
+      for (let i = 0; i < batchCount; i++) {
+        const from = i * batchSize;
+        const to = from + batchSize - 1;
+        
+        console.log(`Fetching batch ${i+1}/${batchCount}: reviews ${from} to ${to}`);
+        
+        const { data, error } = await supabase
+          .from(businessName)
+          .select('*')
+          .order('publishedAtDate', { ascending: false })
+          .range(from, to);
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          allReviews = [...allReviews, ...data];
+          console.log(`Added ${data.length} reviews from batch ${i+1}. Total fetched: ${allReviews.length}`);
+        }
+      }
+      
+      console.log(`Successfully fetched ${allReviews.length} reviews for ${businessName}`);
+      return allReviews;
     } catch (error) {
       console.error(`Error fetching reviews for ${businessName}:`, error);
       throw error;
