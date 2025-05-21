@@ -3,6 +3,7 @@ import { AnalysisData, RecommendationResponse } from '@/types/reviews';
 import { BusinessName, BusinessType } from '@/types/businessTypes';
 import { reviewDataService } from '@/services/reviewDataService';
 import { recommendationService, AIProvider } from '@/services/recommendationService';
+import { logReviewStats, checkForDateFiltering } from '@/utils/reviewDebugUtils';
 
 /**
  * Custom hook for managing dashboard data
@@ -38,6 +39,10 @@ export const useDashboardData = (
       try {
         // Fetch reviews
         const reviews = await reviewDataService.fetchReviews(businessName);
+        
+        // Debug: Log review stats
+        logReviewStats(businessName, reviews);
+        checkForDateFiltering(businessName, reviews);
         
         // Process reviews into analysis data
         const data = reviewDataService.processReviews(reviews);
