@@ -1,34 +1,30 @@
 # Update Log
 
-## 2025-05-21: Fixed review data filtering issue for The Little Prince Cafe
+## 2025-05-21: Fixed review data pagination issue for all businesses
 
 ### Issue:
-- The Little Prince Cafe was only showing reviews from Oct 2024 in the "All Reviews" section in "Overview", 
-- Other businesses (Vol de Nuit and L'Envol Art Space) correctly displayed reviews from 2023
+- The dashboard was only showing 1000 reviews even though there are more available (1374 total)
+- This was most noticeable with The Little Prince Cafe where it appeared to only show reviews from Oct 2024, missing the older reviews from 2023
 
 ### Investigation:
-- Examined the reviewDataService.ts file which is responsible for fetching review data from Supabase
-- The query in fetchReviews() didn't appear to have any explicit date filtering
-- However, there might have been some hidden filtering or data issue specific to The Little Prince Cafe
+- Based on the screenshots provided, we confirmed the system was aware of the total 1374 reviews
+- However, it was only loading the first 1000 reviews due to a pagination/limit issue
+- This is why newer reviews (from Oct 2024) were visible but older ones weren't
 
 ### Solution:
-1. Enhanced the reviewDataService.ts file to:
-   - Make the query structure more explicit
-   - Added additional logging to monitor how many reviews are fetched for each business
+1. Enhanced the `reviewDataService.ts` file to:
+   - Get the total count of reviews first
+   - Implement proper pagination to fetch ALL reviews in batches of 1000
+   - Add detailed logging for each batch fetched
 
-2. Added debug utilities in src/utils/reviewDebugUtils.ts:
-   - logReviewStats: Outputs useful statistics about the reviews fetched
-   - checkForDateFiltering: Checks if there appears to be a date filtering issue
-
-3. Updated useDashboardData.ts to use the new debug utilities for monitoring review data
+2. The solution fetches multiple batches of reviews and combines them, ensuring all reviews (including older ones from 2023) are loaded and displayed in the dashboard.
 
 ### Expected Outcome:
-- The Little Prince Cafe should now display reviews from all time periods (including 2023)
-- The console will show detailed information about the reviews fetched, which will help troubleshoot if the issue persists
+- All 1374 reviews should now load for each business, including older ones from 2023
+- The console will show detailed information about each batch of reviews fetched
+- The statistics in the dashboard will be more accurate as they'll be based on the complete dataset
 
 ### Next Steps:
-- If the issue persists, the most likely problem is with the data in the Supabase database
-- In that case, we should check:
-  1. If the older review data for The Little Prince Cafe actually exists in the database
-  2. If there's another component applying filtering that we haven't located
-  3. If the n8n automation workflow is properly updating all businesses
+- Verify that all reviews are loading correctly for all businesses
+- Check the date range of reviews to confirm older reviews are now included
+- Monitor the performance to ensure that loading all reviews doesn't cause significant slowdowns
